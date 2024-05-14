@@ -1,8 +1,7 @@
 # XHR eXtensions
-Prototype modifications that enable manipulating and listening to XmlHttpRequests throughout their life-cycle.
+Prototype modifications enabling manipulation and snooping of XMLHttpRequests.
 
 ## Why?
-Its primary purpose is for reverse engineering. \
-Used in some of my own projects.
+To aid in personal reverse engineering projects.
 - [winnpixie/socialrip](https://github.com/winnpixie/socialrip)
-- [winnpixie/anypin](https://github.com/winnpixie/anypin) (now defunct)
+- [winnpixie/anypin](https://github.com/winnpixie/anypin)
