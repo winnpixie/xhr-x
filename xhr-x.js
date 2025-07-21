@@ -18,7 +18,7 @@
         }
     }
 
-    class XHRHeaderSetEvent extends XHREvent {
+    class XHRSetHeaderEvent extends XHREvent {
         constructor(context, key, value) {
             super(context);
 
@@ -35,7 +35,7 @@
         }
     }
 
-    class XHRFinishedEvent extends XHREvent {
+    class XHRDoneEvent extends XHREvent {
         constructor(context) {
             super(context);
         }
@@ -43,14 +43,15 @@
     // END Event declarations
 
     const XHRExt = {
-        openHandlers: [],
-        headerSetHandlers: [],
-        sendHandlers: [],
-        finishHandlers: []
+        onOpen: [],
+        onSetHeader: [],
+        onSend: [],
+        onDone: []
     };
+    
     window.XHRExt = XHRExt;
 
-    // BEGIN Prototype hacking
+    // BEGIN Prototype overrides
     const xhr_open = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function () {
         this.xMethod = arguments[0];
@@ -59,9 +60,9 @@
         this.xUsername = arguments[3];
         this.xPassword = arguments[4];
 
-        let xhrEvent = new XHROpenEvent(this, "before");
-        XHRExt.openHandlers.forEach(handler => handler.call(null, xhrEvent));
-        if (xhrEvent.cancelled) return;
+        let preOpenEvent = new XHROpenEvent(this, "before");
+        XHRExt.onOpen.forEach(handler => handler.call(null, preOpenEvent));
+        if (preOpenEvent.cancelled) return;
 
         arguments[0] = this.xMethod;
         arguments[1] = this.xUrl;
@@ -70,7 +71,7 @@
         arguments[4] = this.xPassword;
 
         xhr_open.apply(this, arguments);
-        XHRExt.openHandlers.forEach(handler => handler.call(null, new XHROpenEvent(this, "after")));
+        XHRExt.onOpen.forEach(handler => handler.call(null, new XHROpenEvent(this, "after")));
     };
 
     const xhr_setRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
@@ -79,13 +80,13 @@
 
         this.xHeaders[arguments[0]] = arguments[1];
 
-        let xhrEvent = new XHRHeaderSetEvent(this, arguments[0], arguments[1]);
-        XHRExt.headerSetHandlers.forEach(handler => handler.call(null, xhrEvent));
-        if (xhrEvent.cancelled) return;
+        let setHeaderEvent = new XHRSetHeaderEvent(this, arguments[0], arguments[1]);
+        XHRExt.onSetHeader.forEach(handler => handler.call(null, setHeaderEvent));
+        if (setHeaderEvent.cancelled) return;
 
-        this.xHeaders[xhrEvent.key] = xhrEvent.value;
-        arguments[0] = xhrEvent.key;
-        arguments[1] = xhrEvent.value;
+        this.xHeaders[setHeaderEvent.key] = setHeaderEvent.value;
+        arguments[0] = setHeaderEvent.key;
+        arguments[1] = setHeaderEvent.value;
 
         xhr_setRequestHeader.apply(this, arguments);
     };
@@ -94,23 +95,23 @@
     XMLHttpRequest.prototype.send = function () {
         this.xBody = arguments[0];
 
-        let xhrEvent = new XHRSendEvent(this, "before");
-        XHRExt.sendHandlers.forEach(handler => handler.call(null, xhrEvent));
-        if (xhrEvent.cancelled) return;
+        let preSendEvent = new XHRSendEvent(this, "before");
+        XHRExt.onSend.forEach(handler => handler.call(null, preSendEvent));
+        if (preSendEvent.cancelled) return;
 
         arguments[0] = this.xBody;
 
         const xhr_onreadystatechange = this.onreadystatechange;
         this.onreadystatechange = function () {
             if (this.readyState === XMLHttpRequest.DONE) {
-                XHRExt.finishHandlers.forEach(handler => handler.call(null, new XHRFinishedEvent(this)));
+                XHRExt.onDone.forEach(handler => handler.call(null, new XHRDoneEvent(this)));
             }
 
             if (xhr_onreadystatechange != null) xhr_onreadystatechange.apply(this, arguments);
         };
 
         xhr_send.apply(this, arguments);
-        XHRExt.sendHandlers.forEach(handler => handler.call(null, new XHRSendEvent(this, "after")));
+        XHRExt.onSend.forEach(handler => handler.call(null, new XHRSendEvent(this, "after")));
     };
-    // END Prototype hacking
+    // END Prototype overrides
 })();
